@@ -7,6 +7,7 @@ This prototype:
 - Tracks viewer position from face location (OpenCV Haar cascade)
 - Computes a simple off-axis perspective transform
 - Draws multiple virtual screen instances with parallax/perspective shift
+- Supports smoothing + layout presets for better usability
 - Uses **one-click launch scripts** (no global install required)
 
 ## macOS (Apple Silicon) quick start
@@ -28,6 +29,17 @@ What it does automatically:
 ### 2) Controls
 - `Q` or `Esc` = quit
 - `R` = reset calibration baseline
+
+### 3) Optional CLI flags
+After activating env, you can run directly:
+```bash
+PYTHONPATH=src python -m offaxis.app --layout focus --smoothing 0.45 --debug-face
+```
+
+Available options:
+- `--layout {default,focus}`: choose panel arrangement preset
+- `--smoothing 0..1`: stabilize head-tracking jitter (higher = more responsive)
+- `--debug-face`: draw detected face box in camera view
 
 ## Reset / remove local runtime
 Double-click:

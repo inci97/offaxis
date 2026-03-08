@@ -1,6 +1,12 @@
 import unittest
 
-from offaxis.projection import clamp, normalize_viewer_offset, quad_from_view, relative_viewer_offset
+from offaxis.projection import (
+    clamp,
+    normalize_viewer_offset,
+    quad_from_view,
+    relative_viewer_offset,
+    smooth_viewer_offset,
+)
 
 
 class ProjectionTests(unittest.TestCase):
@@ -26,6 +32,13 @@ class ProjectionTests(unittest.TestCase):
 
     def test_relative_viewer_offset_clamped(self):
         self.assertEqual(relative_viewer_offset((2.5, -2.2), (0.0, 0.0)), (1.0, -1.0))
+
+    def test_smooth_viewer_offset(self):
+        self.assertEqual(smooth_viewer_offset((0.0, 0.0), (1.0, -1.0), 0.25), (0.25, -0.25))
+
+    def test_smooth_viewer_offset_alpha_clamped(self):
+        self.assertEqual(smooth_viewer_offset((0.2, -0.2), (0.8, -0.8), -1.0), (0.2, -0.2))
+        self.assertEqual(smooth_viewer_offset((0.2, -0.2), (0.8, -0.8), 2.0), (0.8, -0.8))
 
     def test_quad_has_four_points(self):
         quad = quad_from_view(100, 100, 80, 40, 0.2, -0.1)

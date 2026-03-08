@@ -116,46 +116,30 @@ def _draw_box_frame(
 ) -> None:
     front = np.array(quad, dtype=np.float32)
 
-    eye = np.array(
+    depth = max(16.0, strength * 120.0)
+    extrusion = np.array(
         [
-            (canvas.shape[1] * 0.5) + (view[0] * canvas.shape[1] * 0.52),
-            (canvas.shape[0] * 0.5) + (view[1] * canvas.shape[0] * 0.52),
+            -view[0] * depth,
+            -view[1] * depth,
         ],
         dtype=np.float32,
     )
-
-    depth = 0.34 + (strength * 0.9)
-    back = eye + (front - eye) * depth
+    back = front + extrusion
 
     front_lines = np.round(front).astype(np.int32)
     back_lines = np.round(back).astype(np.int32)
 
-    overlay = canvas.copy()
-    shade_mask = np.zeros(canvas.shape[:2], dtype=np.uint8)
-    cv2.fillConvexPoly(overlay, back_lines, _scale_color(color, 0.22), lineType=cv2.LINE_AA)
-    cv2.fillConvexPoly(shade_mask, back_lines, 255, lineType=cv2.LINE_AA)
-
-    side_shades = (0.20, 0.24, 0.30, 0.26)
-    for i in range(4):
-        j = (i + 1) % 4
-        side = np.array([front_lines[i], front_lines[j], back_lines[j], back_lines[i]], dtype=np.int32)
-        cv2.fillConvexPoly(overlay, side, _scale_color(color, side_shades[i]), lineType=cv2.LINE_AA)
-        cv2.fillConvexPoly(shade_mask, side, 255, lineType=cv2.LINE_AA)
-
-    blended = cv2.addWeighted(overlay, 0.60, canvas, 0.40, 0.0)
-    canvas[shade_mask > 0] = blended[shade_mask > 0]
-
-    cv2.polylines(canvas, [back_lines], isClosed=True, color=_scale_color(color, 0.90), thickness=2, lineType=cv2.LINE_AA)
+    cv2.polylines(canvas, [back_lines], isClosed=True, color=_scale_color(color, 0.35), thickness=2, lineType=cv2.LINE_AA)
     for i in range(4):
         cv2.line(
             canvas,
             tuple(front_lines[i]),
             tuple(back_lines[i]),
-            _scale_color(color, 0.80),
+            _scale_color(color, 0.55),
             2,
             cv2.LINE_AA,
         )
-    cv2.polylines(canvas, [front_lines], isClosed=True, color=_scale_color(color, 1.25), thickness=3, lineType=cv2.LINE_AA)
+    cv2.polylines(canvas, [front_lines], isClosed=True, color=_scale_color(color, 1.15), thickness=3, lineType=cv2.LINE_AA)
 
 
 def _detect_face(gray: np.ndarray, face_detector: cv2.CascadeClassifier) -> Optional[tuple[float, float, tuple[int, int, int, int]]]:

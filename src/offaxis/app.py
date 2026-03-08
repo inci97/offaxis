@@ -8,7 +8,7 @@ from typing import Optional
 import cv2
 import numpy as np
 
-from .projection import normalize_viewer_offset, quad_from_view
+from .projection import normalize_viewer_offset, quad_from_view, relative_viewer_offset
 
 
 CASCADE_PATH = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
@@ -93,11 +93,7 @@ def main() -> None:
             else:
                 vx, vy = 0.0, 0.0
 
-            vx -= baseline[0]
-            vy -= baseline[1]
-
-            vx = max(-1.0, min(1.0, vx))
-            vy = max(-1.0, min(1.0, vy))
+            vx, vy = relative_viewer_offset((vx, vy), baseline)
 
             canvas = np.zeros_like(frame)
             canvas[:] = (16, 18, 24)

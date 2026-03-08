@@ -3,6 +3,11 @@
 from __future__ import annotations
 
 
+def clamp(value: float, minimum: float, maximum: float) -> float:
+    """Clamp a numeric value into the inclusive ``[minimum, maximum]`` range."""
+    return max(minimum, min(maximum, value))
+
+
 def normalize_viewer_offset(
     face_x: float,
     face_y: float,
@@ -16,9 +21,17 @@ def normalize_viewer_offset(
     nx = ((face_x / frame_width) - 0.5) * 2.0
     ny = ((face_y / frame_height) - 0.5) * 2.0
 
-    nx = max(-1.0, min(1.0, nx))
-    ny = max(-1.0, min(1.0, ny))
-    return nx, ny
+    return clamp(nx, -1.0, 1.0), clamp(ny, -1.0, 1.0)
+
+
+def relative_viewer_offset(
+    current_view: tuple[float, float],
+    baseline: tuple[float, float],
+) -> tuple[float, float]:
+    """Compute baseline-relative viewer offset and clamp it into [-1, 1]."""
+    vx = clamp(current_view[0] - baseline[0], -1.0, 1.0)
+    vy = clamp(current_view[1] - baseline[1], -1.0, 1.0)
+    return vx, vy
 
 
 def quad_from_view(

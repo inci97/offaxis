@@ -103,6 +103,45 @@ def _warp_panel(canvas: np.ndarray, panel: np.ndarray, quad: list[tuple[float, f
     canvas[:] = cv2.add(bg, fg)
 
 
+def _scale_color(color: tuple[int, int, int], factor: float) -> tuple[int, int, int]:
+    return tuple(max(0, min(255, int(channel * factor))) for channel in color)
+
+
+def _draw_box_frame(
+    canvas: np.ndarray,
+    quad: list[tuple[float, float]],
+    color: tuple[int, int, int],
+    view: tuple[float, float],
+    strength: float,
+) -> None:
+    front = np.array(quad, dtype=np.float32)
+
+    depth = max(16.0, strength * 120.0)
+    extrusion = np.array(
+        [
+            -view[0] * depth,
+            -view[1] * depth,
+        ],
+        dtype=np.float32,
+    )
+    back = front + extrusion
+
+    front_lines = np.round(front).astype(np.int32)
+    back_lines = np.round(back).astype(np.int32)
+
+    cv2.polylines(canvas, [back_lines], isClosed=True, color=_scale_color(color, 0.35), thickness=2, lineType=cv2.LINE_AA)
+    for i in range(4):
+        cv2.line(
+            canvas,
+            tuple(front_lines[i]),
+            tuple(back_lines[i]),
+            _scale_color(color, 0.55),
+            2,
+            cv2.LINE_AA,
+        )
+    cv2.polylines(canvas, [front_lines], isClosed=True, color=_scale_color(color, 1.15), thickness=3, lineType=cv2.LINE_AA)
+
+
 def _detect_face(gray: np.ndarray, face_detector: cv2.CascadeClassifier) -> Optional[tuple[float, float, tuple[int, int, int, int]]]:
     faces = face_detector.detectMultiScale(gray, scaleFactor=1.12, minNeighbors=5, minSize=(80, 80))
     if len(faces) == 0:
@@ -175,6 +214,7 @@ def main() -> None:
                     strength=spec.strength,
                 )
                 _warp_panel(canvas, panel, quad)
+                _draw_box_frame(canvas, quad, spec.color, smoothed_view, spec.strength)
 
             overlay = frame.copy()
             cv2.rectangle(overlay, (10, 10), (640, 110), (0, 0, 0), -1)

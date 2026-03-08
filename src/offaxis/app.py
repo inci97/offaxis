@@ -20,6 +20,10 @@ from .projection import (
 
 CASCADE_PATH = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
 
+# Scale factor that maps normalised viewer offset [-1, 1] to pixel displacement
+# relative to canvas centre when computing the 3-D eye position.
+_EYE_VIEW_SCALE = 0.52
+
 
 @dataclass(frozen=True)
 class PanelSpec:
@@ -118,28 +122,55 @@ def _draw_box_frame(
 
     eye = np.array(
         [
-            (canvas.shape[1] * 0.5) + (view[0] * canvas.shape[1] * 0.52),
-            (canvas.shape[0] * 0.5) + (view[1] * canvas.shape[0] * 0.52),
+            (canvas.shape[1] * 0.5) + (view[0] * canvas.shape[1] * _EYE_VIEW_SCALE),
+            (canvas.shape[0] * 0.5) + (view[1] * canvas.shape[0] * _EYE_VIEW_SCALE),
         ],
         dtype=np.float32,
     )
 
-    depth = 0.34 + (strength * 0.9)
+    depth = np.clip(0.34 + (strength * 0.9), 0.0, 1.0)
     back = eye + (front - eye) * depth
 
     front_lines = np.round(front).astype(np.int32)
     back_lines = np.round(back).astype(np.int32)
 
-    overlay = canvas.copy()
-    cv2.fillConvexPoly(overlay, back_lines, _scale_color(color, 0.22), lineType=cv2.LINE_AA)
+    # Compute a tight ROI around the front and back quads to avoid copying the full canvas.
+    all_points = np.concatenate([front_lines, back_lines], axis=0)
+    x_min = int(np.min(all_points[:, 0]))
+    x_max = int(np.max(all_points[:, 0]))
+    y_min = int(np.min(all_points[:, 1]))
+    y_max = int(np.max(all_points[:, 1]))
 
-    side_shades = (0.20, 0.24, 0.30, 0.26)
+    if x_max <= x_min or y_max <= y_min:
+        return
+
+    x_min = np.clip(x_min, 0, canvas.shape[1] - 1)
+    x_max = np.clip(x_max, 0, canvas.shape[1] - 1)
+    y_min = np.clip(y_min, 0, canvas.shape[0] - 1)
+    y_max = np.clip(y_max, 0, canvas.shape[0] - 1)
+
+    roi = canvas[y_min : y_max + 1, x_min : x_max + 1]
+    overlay = roi.copy()
+
+    # Shift polygon coordinates into ROI-local space.
+    offset = np.array([x_min, y_min], dtype=np.int32)
+    back_lines_roi = back_lines - offset
+    front_lines_roi = front_lines - offset
+
+    cv2.fillConvexPoly(overlay, back_lines_roi, _scale_color(color, 0.22), lineType=cv2.LINE_AA)
+
+    # Side shading per edge: top, right, bottom, left (matches quad vertex order TL→TR→BR→BL).
+    side_shades = (0.20, 0.24, 0.30, 0.26)  # top, right, bottom, left
     for i in range(4):
         j = (i + 1) % 4
-        side = np.array([front_lines[i], front_lines[j], back_lines[j], back_lines[i]], dtype=np.int32)
+        side = np.array(
+            [front_lines_roi[i], front_lines_roi[j], back_lines_roi[j], back_lines_roi[i]],
+            dtype=np.int32,
+        )
         cv2.fillConvexPoly(overlay, side, _scale_color(color, side_shades[i]), lineType=cv2.LINE_AA)
 
-    cv2.addWeighted(overlay, 0.60, canvas, 0.40, 0.0, dst=canvas)
+    # Blend only within the ROI back into the canvas.
+    cv2.addWeighted(overlay, 0.60, roi, 0.40, 0.0, dst=roi)
 
     cv2.polylines(canvas, [back_lines], isClosed=True, color=_scale_color(color, 0.90), thickness=2, lineType=cv2.LINE_AA)
     for i in range(4):
@@ -226,7 +257,13 @@ def main() -> None:
                     strength=spec.strength,
                 )
                 _warp_panel(canvas, panel, quad)
-                _draw_box_frame(canvas, quad, spec.color, smoothed_view, spec.strength)
+                _draw_box_frame(
+                    canvas,
+                    quad,
+                    spec.color,
+                    (smoothed_view[0] * spec.scale, smoothed_view[1] * spec.scale),
+                    spec.strength,
+                )
 
             overlay = frame.copy()
             cv2.rectangle(overlay, (10, 10), (640, 110), (0, 0, 0), -1)

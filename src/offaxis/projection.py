@@ -34,6 +34,22 @@ def relative_viewer_offset(
     return vx, vy
 
 
+def smooth_viewer_offset(
+    previous_view: tuple[float, float],
+    current_view: tuple[float, float],
+    alpha: float,
+) -> tuple[float, float]:
+    """Apply exponential smoothing to viewer offsets.
+
+    ``alpha`` is clamped into ``[0, 1]`` where 0 keeps only the previous value
+    and 1 uses only the current value.
+    """
+    ratio = clamp(alpha, 0.0, 1.0)
+    smoothed_x = (previous_view[0] * (1.0 - ratio)) + (current_view[0] * ratio)
+    smoothed_y = (previous_view[1] * (1.0 - ratio)) + (current_view[1] * ratio)
+    return clamp(smoothed_x, -1.0, 1.0), clamp(smoothed_y, -1.0, 1.0)
+
+
 def quad_from_view(
     center_x: float,
     center_y: float,

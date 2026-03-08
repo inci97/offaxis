@@ -18,6 +18,6 @@ fi
 source "$VENV_DIR/bin/activate"
 
 python -m pip install --upgrade pip >/dev/null
-python -m pip install numpy>=1.26 opencv-python>=4.8 >/dev/null
+python -m pip install -e . >/dev/null
 
 PYTHONPATH="$ROOT_DIR/src" python -m offaxis.app
